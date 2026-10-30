@@ -214,7 +214,7 @@ export default function App() {
   };
 
   // Toggle voice input with automatic turn completion
-  const handleToggleVoice = () => {
+  const handleToggleVoice = async () => {
     setVoiceError(null);
     if (isListening) {
       stopVoiceRecognition();
@@ -226,7 +226,7 @@ export default function App() {
     setIsListening(true);
     setAssistantState('listening');
 
-    const started = startVoiceRecognition(
+    const started = await startVoiceRecognition(
       (transcript, isFinal) => {
         if (isFinal && transcript.trim()) {
           stopVoiceRecognition();
