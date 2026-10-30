@@ -67,6 +67,8 @@ export interface SystemTelemetry {
   activeToolsCount: number;
   activeTasksCount: number;
   voiceEngineStatus: 'online' | 'indisponivel';
+  /** Optional backend capability flag; absent when the server does not expose key status. */
+  hasApiKey?: boolean;
 }
 
 export interface PersonaSettings {
