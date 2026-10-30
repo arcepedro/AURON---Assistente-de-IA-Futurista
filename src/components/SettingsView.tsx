@@ -28,6 +28,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [formData, setFormData] = useState<PersonaSettings>(settings);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [voiceTestActive, setVoiceTestActive] = useState(false);
 
   useEffect(() => {
     setFormData(settings);
@@ -37,10 +38,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const voices = getAvailableVoices();
     setAvailableVoices(voices);
 
-    // Some browsers populate voices asynchronously
+    // Some browsers populate voices asynchronously. Clean up the listener on unmount.
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        setAvailableVoices(window.speechSynthesis.getVoices());
+      const synthesis = window.speechSynthesis;
+      const refreshVoices = () => setAvailableVoices(getAvailableVoices());
+      synthesis.addEventListener?.('voiceschanged', refreshVoices);
+      const timer = window.setTimeout(refreshVoices, 250);
+      return () => {
+        window.clearTimeout(timer);
+        synthesis.removeEventListener?.('voiceschanged', refreshVoices);
+        synthesis.cancel();
       };
     }
   }, []);
@@ -53,20 +60,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleTestVoice = () => {
+    if (voiceTestActive && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setVoiceTestActive(false);
+      return;
+    }
+    setVoiceTestActive(true);
     speakText(
-      `Saudações, ${formData.honorific || 'Senhor'}. O sintetizador de voz do AURON foi calibrado com sucesso e está operando na velocidade de ${formData.speechRate}x.`,
+      `Saudações. Eu sou o AURON. Sistemas operacionais. Voz configurada para uma comunicação clara, precisa e natural. Esta é uma demonstração do meu perfil de voz futurista.`,
       {
         voiceURI: formData.selectedVoiceURI,
         rate: formData.speechRate,
         pitch: formData.speechPitch,
+        onEnd: () => setVoiceTestActive(false),
       }
     );
   };
 
-  // Filter voices that mention pt or Portuguese
-  const ptVoices = availableVoices.filter(
-    (v) => v.lang.toLowerCase().includes('pt') || v.name.toLowerCase().includes('portuguese')
-  );
+  // Put Portuguese voices first, but allow comparing every voice installed on this device.
+  const sortedVoices = [...availableVoices].sort((a, b) => {
+    const aPt = /^pt(-|$)/i.test(a.lang) ? 0 : 1;
+    const bPt = /^pt(-|$)/i.test(b.lang) ? 0 : 1;
+    return aPt - bPt || a.name.localeCompare(b.name);
+  });
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 bg-[#040813] auron-grid-bg relative font-rajdhani">
@@ -145,7 +161,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               className="px-3 py-1.5 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono-tech text-xs hover:bg-cyan-900 flex items-center gap-1.5 transition-colors"
             >
               <Play className="w-3 h-3 text-cyan-400" />
-              Testar Voz
+              {voiceTestActive ? 'Parar Teste' : 'Testar Voz'}
             </button>
           </div>
 
@@ -160,14 +176,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 className="w-full p-2.5 rounded-xl bg-slate-950 border border-cyan-900/40 text-slate-100 text-sm focus:outline-none focus:border-cyan-400 font-rajdhani"
               >
                 <option value="">Detecção Automática (Voz Natural Masculina PT-BR)</option>
-                {ptVoices.map((v) => (
+                {sortedVoices.map((v) => (
                   <option key={v.voiceURI} value={v.voiceURI}>
                     {v.name} ({v.lang})
                   </option>
                 ))}
               </select>
               <p className="text-[11px] font-mono-tech text-slate-500 mt-1">
-                O AURON prioriza vozes masculinas naturais brasileiras (como Microsoft Daniel, Felipe ou Google Português do Brasil).
+                {availableVoices.length === 0
+                  ? 'Carregando vozes do sistema… Se nenhuma aparecer, verifique o suporte do navegador e as vozes instaladas no Windows.'
+                  : `${availableVoices.length} voz(es) disponíveis neste dispositivo. As vozes em português aparecem primeiro; a seleção manual permite comparar alternativas. A identificação de gênero depende do nome fornecido pelo sistema.`}
               </p>
             </div>
 
