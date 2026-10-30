@@ -22,8 +22,8 @@ import { Menu, ShieldCheck } from 'lucide-react';
 const DEFAULT_SETTINGS: PersonaSettings = {
   userName: 'Senhor',
   honorific: 'Senhor',
-  speechRate: 1.0,
-  speechPitch: 0.95,
+  speechRate: 0.9,
+  speechPitch: 0.85,
   voiceGender: 'male',
   selectedVoiceURI: '',
   autoSpeak: true,
