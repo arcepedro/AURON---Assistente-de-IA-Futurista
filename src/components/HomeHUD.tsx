@@ -27,6 +27,8 @@ interface HomeHUDProps {
   tools: ToolDefinition[];
   onTriggerQuickAction: (actionText: string) => void;
   isListening: boolean;
+  voiceError?: string | null;
+  onDismissVoiceError?: () => void;
 }
 
 export const HomeHUD: React.FC<HomeHUDProps> = ({
@@ -38,6 +40,8 @@ export const HomeHUD: React.FC<HomeHUDProps> = ({
   tools,
   onTriggerQuickAction,
   isListening,
+  voiceError,
+  onDismissVoiceError,
 }) => {
   const activeTools = tools.filter((t) => t.isAvailable);
   const pendingTools = tools.filter((t) => !t.isAvailable);
@@ -78,6 +82,17 @@ export const HomeHUD: React.FC<HomeHUDProps> = ({
           </button>
         </div>
       </div>
+
+      {voiceError && (
+        <div role="alert" className="flex items-start justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-950/40 p-4 text-sm text-amber-100">
+          <div>
+            <p className="font-semibold">Microfone indisponível</p>
+            <p className="mt-1 text-amber-100/90">{voiceError}</p>
+            <p className="mt-2 text-xs text-amber-200/80">Dica: use HTTPS ou localhost e permita o microfone pelo ícone ao lado do endereço do site.</p>
+          </div>
+          <button type="button" onClick={onDismissVoiceError} className="shrink-0 rounded border border-amber-500/40 px-2 py-1 text-xs hover:bg-amber-900/60">Fechar</button>
+        </div>
+      )}
 
       {/* Main Grid: Visual Core & Telemetry */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
