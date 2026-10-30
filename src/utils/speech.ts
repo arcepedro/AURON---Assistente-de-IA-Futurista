@@ -32,50 +32,130 @@ export function checkSpeechSupport() {
   };
 }
 
-/**
- * Returns available voices filtered for Portuguese with preference for natural male voices
- */
-export function getAvailableVoices(): SpeechSynthesisVoice[] {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
-  const voices = window.speechSynthesis.getVoices();
-  return voices;
+export const DEFAULT_VOICE_CONFIG = {
+  rate: 0.90, // Ritmo moderadamente pausado e focado
+  pitch: 0.85, // Timbre médio-grave futurista
+  profileName: 'Inteligência Artificial Futurista',
+  demoPhrase:
+    'Saudações, Senhor. Identidade vocal AURON calibrada no perfil inteligência artificial futurista. Timbre médio-grave e cadência operacional em perfeita harmonia.',
+};
+
+export interface CategorizedVoice {
+  voice: SpeechSynthesisVoice;
+  isPtBr: boolean;
+  isMale: boolean;
+  recommended: boolean;
+  displayName: string;
 }
 
 /**
- * Selects best matching Brazilian Portuguese voice (preferably male)
+ * Checks if a voice name or identifier suggests a male voice
  */
-export function selectBestPtVoice(selectedURI?: string): SpeechSynthesisVoice | null {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
-  const voices = window.speechSynthesis.getVoices();
-  if (voices.length === 0) return null;
+export function isMaleVoiceName(name: string): boolean {
+  const n = (name || '').toLowerCase();
+  return (
+    n.includes('daniel') ||
+    n.includes('felipe') ||
+    n.includes('ricardo') ||
+    n.includes('antonio') ||
+    n.includes('homem') ||
+    n.includes('male') ||
+    n.includes('man') ||
+    n.includes('guy') ||
+    n.includes('jorge') ||
+    n.includes('carlos') ||
+    n.includes('pt-br-standard-b') ||
+    n.includes('pt-br-wavenet-b')
+  );
+}
+
+/**
+ * Prioritizes and selects the best Brazilian Portuguese voice with preference for natural male timbre
+ */
+export function selectBestPtVoiceFromList(
+  voices: SpeechSynthesisVoice[],
+  selectedURI?: string
+): SpeechSynthesisVoice | null {
+  if (!voices || voices.length === 0) return null;
 
   if (selectedURI) {
     const found = voices.find((v) => v.voiceURI === selectedURI);
     if (found) return found;
   }
 
-  // Prioritize Brazilian Portuguese male voices
-  const ptBrVoices = voices.filter(
-    (v) => v.lang.toLowerCase() === 'pt-br' || v.lang.toLowerCase().startsWith('pt')
-  );
+  // Score each voice
+  let bestVoice: SpeechSynthesisVoice | null = null;
+  let bestScore = -1;
 
-  // Look for male voice identifiers (Daniel, Felipe, Male, Homem, etc.)
-  const malePtVoice = ptBrVoices.find((v) => {
-    const n = v.name.toLowerCase();
-    return (
-      n.includes('daniel') ||
-      n.includes('felipe') ||
-      n.includes('ricardo') ||
-      n.includes('antonio') ||
-      n.includes('male') ||
-      n.includes('homem')
-    );
+  for (const v of voices) {
+    const lang = (v.lang || '').toLowerCase().replace('_', '-');
+    const name = (v.name || '').toLowerCase();
+    const isMale = isMaleVoiceName(name);
+
+    let score = 0;
+    if (lang === 'pt-br') {
+      score = isMale ? 100 : 70;
+    } else if (lang.startsWith('pt')) {
+      score = isMale ? 60 : 40;
+    } else if (v.default) {
+      score = 20;
+    } else {
+      score = 10;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestVoice = v;
+    }
+  }
+
+  return bestVoice;
+}
+
+/**
+ * Returns available voices filtered for Portuguese with preference for natural male voices
+ */
+export function getAvailableVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+  return window.speechSynthesis.getVoices();
+}
+
+/**
+ * Selects best matching Brazilian Portuguese voice (preferably male)
+ */
+export function selectBestPtVoice(selectedURI?: string): SpeechSynthesisVoice | null {
+  const voices = getAvailableVoices();
+  return selectBestPtVoiceFromList(voices, selectedURI);
+}
+
+/**
+ * Categorizes and formats voices for presentation in the UI
+ */
+export function categorizeVoices(voices: SpeechSynthesisVoice[]): CategorizedVoice[] {
+  return voices.map((v) => {
+    const lang = (v.lang || '').toLowerCase().replace('_', '-');
+    const isPtBr = lang === 'pt-br';
+    const isPt = lang.startsWith('pt');
+    const isMale = isMaleVoiceName(v.name);
+    const recommended = isPtBr && isMale;
+
+    let tag = '';
+    if (isPtBr) {
+      tag = isMale ? ' [PT-BR • Masculino • Recomendado]' : ' [PT-BR]';
+    } else if (isPt) {
+      tag = isMale ? ' [Português • Masculino]' : ' [Português]';
+    } else {
+      tag = ` [${v.lang}]`;
+    }
+
+    return {
+      voice: v,
+      isPtBr,
+      isMale,
+      recommended,
+      displayName: `${v.name}${tag}`,
+    };
   });
-
-  if (malePtVoice) return malePtVoice;
-  if (ptBrVoices.length > 0) return ptBrVoices[0];
-
-  return voices[0] || null;
 }
 
 /**
@@ -111,7 +191,8 @@ export function speakText(
     return;
   }
 
-  window.speechSynthesis.cancel();
+  // Cancel any ongoing speech cleanly to prevent overlapping
+  stopSpeaking();
 
   const cleaned = cleanTextForSpeech(text);
   if (!cleaned) {
@@ -121,8 +202,9 @@ export function speakText(
 
   const utterance = new SpeechSynthesisUtterance(cleaned);
   utterance.lang = 'pt-BR';
-  utterance.rate = options.rate ?? 1.0;
-  utterance.pitch = options.pitch ?? 0.95; // Slightly deeper authoritative tone
+  // Futuristic AI Profile: rate 0.90 (paused cadence), pitch 0.85 (medium-deep presence)
+  utterance.rate = options.rate ?? DEFAULT_VOICE_CONFIG.rate;
+  utterance.pitch = options.pitch ?? DEFAULT_VOICE_CONFIG.pitch;
 
   const voice = selectBestPtVoice(options.voiceURI);
   if (voice) {
@@ -147,7 +229,11 @@ export function speakText(
 
 export function stopSpeaking() {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {
+      // ignore
+    }
   }
 }
 

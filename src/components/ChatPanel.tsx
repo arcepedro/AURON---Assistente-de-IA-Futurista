@@ -43,8 +43,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   speechSynthesisActive,
   onToggleSpeechSynthesis,
   speechVoiceURI,
-  speechRate = 1.0,
-  speechPitch = 0.95,
+  speechRate = 0.90,
+  speechPitch = 0.85,
 }) => {
   const [inputText, setInputText] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);

@@ -22,8 +22,8 @@ import { Menu, ShieldCheck } from 'lucide-react';
 const DEFAULT_SETTINGS: PersonaSettings = {
   userName: 'Senhor',
   honorific: 'Senhor',
-  speechRate: 1.0,
-  speechPitch: 0.95,
+  speechRate: 0.90, // Ritmo moderadamente pausado (Perfil IA Futurista)
+  speechPitch: 0.85, // Timbre médio-grave tecnológico
   voiceGender: 'male',
   selectedVoiceURI: '',
   autoSpeak: true,
@@ -70,7 +70,13 @@ export default function App() {
       const saved = localStorage.getItem('auron_settings');
       if (saved) {
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          return {
+            ...DEFAULT_SETTINGS,
+            ...parsed,
+            speechRate: typeof parsed.speechRate === 'number' ? parsed.speechRate : DEFAULT_SETTINGS.speechRate,
+            speechPitch: typeof parsed.speechPitch === 'number' ? parsed.speechPitch : DEFAULT_SETTINGS.speechPitch,
+          };
         } catch (e) {
           // ignore
         }
