@@ -144,15 +144,19 @@ export function stopSpeaking() {
   }
 }
 
-export function startVoiceRecognition(
+export async function startVoiceRecognition(
   onResult: (transcript: string, isFinal: boolean) => void,
   onError?: (err: any) => void,
   onEnd?: () => void
-): boolean {
+): Promise<boolean> {
   if (typeof window === 'undefined') return false;
+  if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+    onError?.('O microfone exige uma conexão segura (HTTPS) ou localhost. Abra a versão publicada em HTTPS.');
+    return false;
+  }
   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    onError?.('Reconhecimento de fala não suportado neste navegador.');
+    onError?.('Reconhecimento de fala não suportado neste navegador. Tente abrir o AURON diretamente no Google Chrome ou Microsoft Edge atualizado, fora do painel de pré-visualização.');
     return false;
   }
   try {
@@ -181,10 +185,26 @@ export function startVoiceRecognition(
       onEnd?.();
     };
     activeRecognition = recognition;
+    // Request microphone permission explicitly so permission failures can be explained.
+    // Stop the temporary stream immediately; SpeechRecognition opens its own audio capture.
+    if (!navigator.mediaDevices?.getUserMedia) {
+      onError?.('Este ambiente não permite verificar o microfone. Abra o AURON em uma aba própria do Chrome/Edge e tente novamente.');
+      return false;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
     recognition.start();
     return true;
   } catch (err: any) {
-    onError?.(err?.message || 'Falha ao iniciar microfone.');
+    const name = err?.name || err?.error;
+    const message = name === 'NotAllowedError' || name === 'PermissionDeniedError'
+      ? 'O navegador ou o ambiente de pré-visualização bloqueou o microfone. Abra o AURON em uma aba própria do Chrome/Edge, permita o microfone para esse endereço e verifique as permissões de microfone do Windows.'
+      : name === 'NotFoundError' || name === 'DevicesNotFoundError'
+        ? 'Não encontrei um microfone disponível. Conecte ou selecione um dispositivo de entrada no Windows.'
+        : name === 'NotReadableError' || name === 'TrackStartError'
+          ? 'O microfone está ocupado por outro aplicativo ou não pode ser acessado. Feche aplicativos que usam o microfone e tente novamente.'
+          : err?.message || 'Falha ao iniciar microfone. Verifique as permissões e tente novamente.';
+    onError?.(message);
     return false;
   }
 }
