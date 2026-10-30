@@ -44,6 +44,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [assistantState, setAssistantState] = useState<AssistantState>('idle');
   const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [speechSynthesisActive, setSpeechSynthesisActive] = useState(true);
 
   // Core Data
@@ -214,6 +215,7 @@ export default function App() {
 
   // Toggle voice input with automatic turn completion
   const handleToggleVoice = () => {
+    setVoiceError(null);
     if (isListening) {
       stopVoiceRecognition();
       setIsListening(false);
@@ -234,6 +236,17 @@ export default function App() {
       },
       (error) => {
         console.warn('Erro de reconhecimento de voz:', error);
+        const errorCode = typeof error === 'string' ? error : (error as any)?.error || (error as any)?.message || 'unknown';
+        const messages: Record<string, string> = {
+          'not-allowed': 'O acesso ao microfone foi bloqueado. Permita o microfone nas configurações do navegador e tente novamente.',
+          'service-not-allowed': 'O navegador bloqueou o serviço de reconhecimento de voz. Verifique as permissões e tente usar o Chrome ou Edge atualizado.',
+          'audio-capture': 'Nenhum microfone foi encontrado. Verifique se ele está conectado e selecionado no Windows.',
+          'no-speech': 'Não detectei fala. Fale perto do microfone e tente novamente.',
+          'network': 'O reconhecimento de voz falhou por um problema de rede. Verifique sua conexão e tente novamente.',
+          'language-not-supported': 'O reconhecimento em português brasileiro não está disponível neste navegador.',
+          'not supported': 'Este navegador não oferece reconhecimento de voz. Tente o Google Chrome ou Microsoft Edge atualizado.',
+        };
+        setVoiceError(messages[errorCode] || (typeof error === 'string' ? error : 'Não foi possível iniciar o microfone. Confira as permissões do navegador.'));
         setIsListening(false);
         setAssistantState('idle');
       },
@@ -419,6 +432,8 @@ export default function App() {
               handleSendMessage(text);
             }}
             isListening={isListening}
+            voiceError={voiceError}
+            onDismissVoiceError={() => setVoiceError(null)}
           />
         )}
 
