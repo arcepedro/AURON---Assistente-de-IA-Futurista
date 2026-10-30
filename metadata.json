@@ -1,0 +1,6 @@
+{
+  "name": "AURON - Assistente de IA Futurista",
+  "description": "AURON é um assistente pessoal de inteligência artificial com núcleo holográfico reativo, controle por voz, memória estruturada e arquitetura extensível de ferramentas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
