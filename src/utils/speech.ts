@@ -14,7 +14,6 @@ export interface SpeechController {
 }
 
 let activeRecognition: any = null;
-let voiceLoadHandler: (() => void) | null = null;
 
 export function checkSpeechSupport() {
   return {
